@@ -274,9 +274,11 @@ class ExperimentApp:
             ],
             value="recall",
         )
-        self.start_btn = ft.ElevatedButton(
-            text="Démarrer la session",
-            icon=ft.Icons.PLAY_ARROW,
+        self.start_btn = ft.Button(
+            content=ft.Row([
+                ft.Icon(ft.Icons.PLAY_ARROW),
+                ft.Text("Démarrer la session")
+            ], tight=True),
             on_click=self.on_start,
             style=ft.ButtonStyle(padding=20),
         )
