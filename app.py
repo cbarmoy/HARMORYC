@@ -269,8 +269,8 @@ class ExperimentApp:
             label="Type de tâche",
             width=300,
             options=[
-                ft.dropdown.Option("recall", "Tâche de rappel"),
-                ft.dropdown.Option("rappel_immediat", "Rappel immédiat"),
+                ft.dropdown.Option(key="recall", text="Tâche de rappel"),
+                ft.dropdown.Option(key="rappel_immediat", text="Rappel immédiat"),
             ],
             value="recall",
         )
@@ -318,9 +318,9 @@ class ExperimentApp:
         self.splash_logos = ft.Container(
             content=ft.Column([
                 ft.Row([
-                    ft.Image(src=f"{ASSETS_DIR}/Logo_NP.jpg", height=150, fit=ft.ImageFit.CONTAIN),
+                    ft.Image(src=f"{ASSETS_DIR}/Logo_NP.jpg", height=150, fit="contain"),
                     ft.Container(width=80),
-                    ft.Image(src=f"{ASSETS_DIR}/Logo_IRBA.jpeg", height=150, fit=ft.ImageFit.CONTAIN),
+                    ft.Image(src=f"{ASSETS_DIR}/Logo_IRBA.jpeg", height=150, fit="contain"),
                 ], alignment=ft.MainAxisAlignment.CENTER),
             ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
             bgcolor=ft.Colors.WHITE,
@@ -969,7 +969,7 @@ class ExperimentApp:
             src=str(src),
             height=None if expand else height,
             expand=expand,
-            fit=ft.ImageFit.CONTAIN,
+            fit="contain",
             error_content=ft.Text("Image introuvable", size=20),
         )
 
@@ -1020,7 +1020,7 @@ class ExperimentApp:
                 ft.Image(
                     src=f"{ASSETS_DIR}/Default_Day.jpg",
                     height=150,
-                    fit=ft.ImageFit.COVER,
+                    fit="cover",
                     border_radius=ft.border_radius.only(top_left=12, top_right=12),
                     error_content=ft.Container(
                         content=ft.Icon(ft.Icons.WB_SUNNY, size=60, color=ft.Colors.ORANGE_400),
@@ -1047,7 +1047,7 @@ class ExperimentApp:
                 ft.Image(
                     src=f"{ASSETS_DIR}/Default_Night.jpg",
                     height=150,
-                    fit=ft.ImageFit.COVER,
+                    fit="cover",
                     border_radius=ft.border_radius.only(top_left=12, top_right=12),
                     error_content=ft.Container(
                         content=ft.Icon(ft.Icons.NIGHTLIGHT_ROUND, size=60, color=ft.Colors.INDIGO_400),
@@ -1151,7 +1151,7 @@ class ExperimentApp:
                     ft.Image(
                         src=rimage,
                         height=140,
-                        fit=ft.ImageFit.COVER,
+                        fit="cover",
                         border_radius=ft.border_radius.only(top_left=12, top_right=12),
                         error_content=ft.Container(
                             content=ft.Icon(ft.Icons.MEETING_ROOM, size=50, color=ft.Colors.GREY_600),
@@ -1208,7 +1208,7 @@ class ExperimentApp:
                         src=rimage,
                         height=120,
                         width=160,
-                        fit=ft.ImageFit.COVER,
+                        fit="cover",
                         border_radius=ft.border_radius.only(top_left=8, top_right=8),
                         error_content=ft.Container(
                             content=ft.Icon(ft.Icons.MEETING_ROOM, size=30, color=ft.Colors.GREY_600),
@@ -1708,4 +1708,4 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    ft.run(target=main)
+    ft.run(main)
