@@ -300,7 +300,7 @@ class ExperimentApp:
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            alignment=ft.alignment.center,
+            alignment=ft.Alignment(0, 0),
             expand=True,
             padding=40,
         )
@@ -309,7 +309,7 @@ class ExperimentApp:
         self.question_display = ft.Container(
             content=ft.Column([]),
             bgcolor=ft.Colors.GREY_200,
-            alignment=ft.alignment.center,
+            alignment=ft.Alignment(0, 0),
             expand=True,
             visible=False,
         )
@@ -324,7 +324,7 @@ class ExperimentApp:
                 ], alignment=ft.MainAxisAlignment.CENTER),
             ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
             bgcolor=ft.Colors.WHITE,
-            alignment=ft.alignment.center,
+            alignment=ft.Alignment(0, 0),
             expand=True,
             opacity=1.0,
             animate_opacity=ft.Animation(800, ft.AnimationCurve.EASE_IN_OUT),
@@ -348,7 +348,7 @@ class ExperimentApp:
                 ),
             ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=20),
             bgcolor=ft.Colors.WHITE,
-            alignment=ft.alignment.center,
+            alignment=ft.Alignment(0, 0),
             expand=True,
             opacity=0.0,
             animate_opacity=ft.Animation(800, ft.AnimationCurve.EASE_IN_OUT),
@@ -975,17 +975,15 @@ class ExperimentApp:
 
     def _button_row_yes_no(self) -> ft.Control:
         btn_yes = ft.FilledButton(
-            text="Oui",
+            content=ft.Text("Oui", size=20),
             width=200,
             height=60,
-            style=ft.ButtonStyle(text_style=ft.TextStyle(size=20)),
             on_click=lambda _: self._on_choice("yes"),
         )
         btn_no = ft.OutlinedButton(
-            text="Non",
+            content=ft.Text("Non", size=20),
             width=200,
             height=60,
-            style=ft.ButtonStyle(text_style=ft.TextStyle(size=20)),
             on_click=lambda _: self._on_choice("no"),
         )
         self.choice_buttons["yes"] = btn_yes
@@ -997,17 +995,15 @@ class ExperimentApp:
 
     def _button_row_correct_incorrect(self) -> ft.Control:
         btn_correct = ft.FilledButton(
-            text="Correct",
+            content=ft.Text("Correct", size=20),
             width=200,
             height=60,
-            style=ft.ButtonStyle(text_style=ft.TextStyle(size=20)),
             on_click=lambda _: self._on_choice("correct"),
         )
         btn_incorrect = ft.OutlinedButton(
-            text="Incorrect",
+            content=ft.Text("Incorrect", size=20),
             width=200,
             height=60,
-            style=ft.ButtonStyle(text_style=ft.TextStyle(size=20)),
             on_click=lambda _: self._on_choice("incorrect"),
         )
         self.choice_buttons["correct"] = btn_correct
@@ -1029,7 +1025,7 @@ class ExperimentApp:
                     error_content=ft.Container(
                         content=ft.Icon(ft.Icons.WB_SUNNY, size=60, color=ft.Colors.ORANGE_400),
                         height=150,
-                        alignment=ft.alignment.center,
+                        alignment=ft.Alignment(0, 0),
                         bgcolor=ft.Colors.AMBER_100,
                     ),
                 ),
@@ -1056,7 +1052,7 @@ class ExperimentApp:
                     error_content=ft.Container(
                         content=ft.Icon(ft.Icons.NIGHTLIGHT_ROUND, size=60, color=ft.Colors.INDIGO_400),
                         height=150,
-                        alignment=ft.alignment.center,
+                        alignment=ft.Alignment(0, 0),
                         bgcolor=ft.Colors.INDIGO_100,
                     ),
                 ),
@@ -1084,10 +1080,9 @@ class ExperimentApp:
         buttons = []
         for i in range(start, end + 1):
             btn = ft.OutlinedButton(
-                text=str(i),
+                content=ft.Text(str(i), size=16),
                 width=70,
                 height=50,
-                style=ft.ButtonStyle(text_style=ft.TextStyle(size=16)),
                 on_click=lambda _, v=str(i): self._on_choice(v),
             )
             self.choice_buttons[str(i)] = btn
@@ -1111,7 +1106,7 @@ class ExperimentApp:
                     ft.Container(
                         content=ft.Text(f"Image {idx + 1}", size=14, weight=ft.FontWeight.W_500),
                         padding=8,
-                        alignment=ft.alignment.center,
+                        alignment=ft.Alignment(0, 0),
                     ),
                 ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
                 width=220,
@@ -1131,10 +1126,9 @@ class ExperimentApp:
 
     def _button_je_ne_sais_pas(self) -> ft.Control:
         btn = ft.OutlinedButton(
-            text="Je ne sais pas",
+            content=ft.Text("Je ne sais pas", size=18),
             width=240,
             height=50,
-            style=ft.ButtonStyle(text_style=ft.TextStyle(size=18)),
             on_click=lambda _: self._on_choice("je_ne_sais_pas"),
         )
         self.choice_buttons["je_ne_sais_pas"] = btn
@@ -1162,7 +1156,7 @@ class ExperimentApp:
                         error_content=ft.Container(
                             content=ft.Icon(ft.Icons.MEETING_ROOM, size=50, color=ft.Colors.GREY_600),
                             height=140,
-                            alignment=ft.alignment.center,
+                            alignment=ft.Alignment(0, 0),
                             bgcolor=ft.Colors.GREY_200,
                         ),
                     ),
@@ -1220,7 +1214,7 @@ class ExperimentApp:
                             content=ft.Icon(ft.Icons.MEETING_ROOM, size=30, color=ft.Colors.GREY_600),
                             height=80,
                             width=110,
-                            alignment=ft.alignment.center,
+                            alignment=ft.Alignment(0, 0),
                             bgcolor=ft.Colors.GREY_200,
                         ),
                     ),
@@ -1714,4 +1708,4 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.run(target=main)
