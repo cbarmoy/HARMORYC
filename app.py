@@ -274,11 +274,9 @@ class ExperimentApp:
             ],
             value="recall",
         )
-        self.start_btn = ft.Button(
-            content=ft.Row([
-                ft.Icon(ft.Icons.PLAY_ARROW),
-                ft.Text("Démarrer la session")
-            ], tight=True),
+        self.start_btn = ft.ElevatedButton(
+            text="Démarrer la session",
+            icon=ft.Icons.PLAY_ARROW,
             on_click=self.on_start,
             style=ft.ButtonStyle(padding=20),
         )
@@ -1714,4 +1712,4 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    ft.run(target=main)
+    ft.app(target=main)
