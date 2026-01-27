@@ -4,10 +4,4 @@ sessions/*.json
 __pycache__/
 .venv/
 build/
-sessions/*.json
-!sessions/example_session.json
-
-.venv/
-__pycache__/
-build/
 
