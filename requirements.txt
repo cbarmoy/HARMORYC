@@ -1,0 +1,6 @@
+flet>=0.28.3
+websockets>=15.0.1
+pyinstaller>=6.18.0
+pandas>=2.0.0
+openpyxl>=3.1.0
+matplotlib>=3.7.0

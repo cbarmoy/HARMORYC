@@ -18,6 +18,17 @@ try:
 except Exception:  # pragma: no cover
     websockets = None  # type: ignore
 
+try:
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+    from openpyxl import load_workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+    HAS_EXCEL_SUPPORT = True
+except Exception:
+    HAS_EXCEL_SUPPORT = False
+
 
 # -------------------------------
 # Utilities
@@ -33,7 +44,7 @@ WS_PORT = 8765
 RANDOM_MODE = "fixed"
 RANDOM_SEED = "HARMORYC_V2"
 
-V2_ASSETS_SUBDIR = "Dossier Exemple"
+V2_ASSETS_SUBDIR = "HARMORYC_VR_images_rappels"
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 ROOM_GRID_ORDER = ["room8", "room5", "room3", "room7", "room4", "room6", "room10", "room9", "room2", "room1"]
 
@@ -578,6 +589,7 @@ class ExperimentApp:
         familiar = list(self.data.get("familiar_objects") or [])
         new_objects = list(self.data.get("new_objects") or [])
         rappel_immediat_trials = list(self.data.get("rappel_immediat_trials") or [])
+        step5_trials = list(self.data.get("step5_trials") or [])
         if self.task_mode == "rappel_immediat":
             balanced_ri = self._pick_balanced_trials(rappel_immediat_trials, rand)
             rand.shuffle(balanced_ri)
@@ -647,7 +659,7 @@ class ExperimentApp:
             })
 
         # Étape V (rappel tardif inversé)
-        step5_trials = self._pick_balanced_trials(rappel_immediat_trials, rand)
+        step5_trials = self._pick_balanced_trials(step5_trials, rand)
         rand.shuffle(step5_trials)
         for t in step5_trials:
             tasks.append({
@@ -696,7 +708,7 @@ class ExperimentApp:
         elif kind == "step3_daynight":
             return "Faisait-il jour ou nuit ?"
         elif kind == "step4_order":
-            return "À quel moment cette salle a-t-elle été vue ?"
+            return "À quel moment cette salle a-t-elle été vue ? (1 = première salle vue, 10 = dernière salle vue)"
         elif kind == "step5":
             return "Cette scène est-elle correcte ?"
         elif kind == "rappel_immediat":
@@ -732,7 +744,8 @@ class ExperimentApp:
 
         elif kind == "step2_where":
             obj = task["object"]
-            content.append(self._image_or_default(obj.get("image"), image_type="object", height=240))
+            # Image de question un peu plus petite pour laisser plus de place aux réponses
+            content.append(self._image_or_default(obj.get("image"), image_type="object", height=200))
             content.append(ft.Container(height=20))
             content.append(self._rooms_grid(task["rooms"]))
             content.append(ft.Container(height=15))
@@ -824,6 +837,22 @@ class ExperimentApp:
                 images.append(self._as_asset_path(p))
         return images
 
+    def _build_trials_from_dirs(self, correct_dir: Path, incorrect_dir: Path) -> List[Dict[str, Any]]:
+        trials: List[Dict[str, Any]] = []
+        for img in self._list_images(correct_dir):
+            trials.append({
+                "id": f"correct_{Path(img).stem}",
+                "image": img,
+                "is_correct": True,
+            })
+        for img in self._list_images(incorrect_dir):
+            trials.append({
+                "id": f"incorrect_{Path(img).stem}",
+                "image": img,
+                "is_correct": False,
+            })
+        return trials
+
     def _first_image(self, directory: Path) -> Optional[str]:
         images = self._list_images(directory)
         return images[0] if images else None
@@ -852,15 +881,18 @@ class ExperimentApp:
 
     def _load_v2_assets(self) -> Dict[str, Any]:
         base = Path(ASSETS_DIR) / V2_ASSETS_SUBDIR
-        rooms_dir = base / "Salles"
-        familiar_dir = base / "Objets" / "Objets Familiers (OF)"
-        new_dir = base / "Objets" / "Objets nouveaux (NO)"
-        rappel_dir = base / "Rappel immédiat"
-        rappel_correct_dir = rappel_dir / "Salles correctes"
-        rappel_incorrect_dir = rappel_dir / "Salles incorrectes"
-        iib_dir = base / "Etapes IIB"
-        iib_familiar_dir = iib_dir / "Objets familiers (OF)"
-        iib_new_dir = iib_dir / "Nouveaux objets (NO)"
+        rooms_dir = base / "Start_Room"
+        familiar_dir = base / "Objets" / "Objets_familiers (OF)"
+        new_dir = base / "Objets" / "Nouveaux_objets (NO)"
+        rappel_dir = base / "Rappel_immediat"
+        rappel_correct_dir = rappel_dir / "Salles_correctes"
+        rappel_incorrect_dir = rappel_dir / "Salles_incorrectes"
+        iib_dir = base / "EtapesIIB"
+        iib_familiar_dir = iib_dir / "OF"
+        iib_new_dir = iib_dir / "NO"
+        step5_dir = base / "EtapesV"
+        step5_correct_dir = step5_dir / "Salles correctes"
+        step5_incorrect_dir = step5_dir / "Salles incorrectes"
 
         rooms = []
         room_dirs = [d for d in rooms_dir.iterdir()] if rooms_dir.exists() else []
@@ -918,32 +950,52 @@ class ExperimentApp:
                 "is_correct": False,
             })
 
-        def _position_images(obj_dir: Path) -> Tuple[Optional[str], Optional[str]]:
+        def _position_images(
+            obj_dir: Path,
+            good_prefix: str,
+            bad_prefixes: List[str],
+            allow_good_fallback: bool = True,
+        ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
             if not obj_dir.exists():
-                return None, None
+                return None, None, None
             subdirs = [d for d in obj_dir.iterdir() if d.is_dir()]
-            good_dirs = [d for d in subdirs if d.name.lower().startswith("bonne position")]
-            bad_dirs = [d for d in subdirs if d.name.lower().startswith("mauvaise position")]
+            good_dirs = [d for d in subdirs if d.name.lower().startswith(good_prefix.lower())]
+            bad_dirs = [d for d in subdirs if any(d.name.lower().startswith(p.lower()) for p in bad_prefixes)]
+            bad_dirs.sort(key=lambda d: d.name.lower())
             good_img = self._first_image(good_dirs[0]) if good_dirs else None
             bad_img = self._first_image(bad_dirs[0]) if bad_dirs else None
+            alt_bad_img = self._first_image(bad_dirs[1]) if len(bad_dirs) > 1 else None
             all_imgs = self._list_images(obj_dir)
-            if not good_img and all_imgs:
+            if allow_good_fallback and not good_img and all_imgs:
                 good_img = all_imgs[0]
             if not bad_img and len(all_imgs) > 1:
                 bad_img = all_imgs[1]
             if not bad_img:
                 bad_img = good_img
-            return good_img, bad_img
+            if not alt_bad_img and len(all_imgs) > 2:
+                alt_bad_img = all_imgs[2]
+            if not alt_bad_img:
+                alt_bad_img = bad_img
+            return good_img, bad_img, alt_bad_img
 
         iib_positions: Dict[str, Dict[str, Optional[str]]] = {}
         for i in range(1, 11):
             obj_id = f"OF{i}"
-            good_img, bad_img = _position_images(iib_familiar_dir / obj_id)
-            iib_positions[obj_id] = {"good": good_img, "bad": bad_img}
+            good_img, bad_img, alt_bad_img = _position_images(
+                iib_familiar_dir / obj_id,
+                good_prefix="Position_OF_OK",
+                bad_prefixes=["Position_OF_Wrong"],
+            )
+            iib_positions[obj_id] = {"good": good_img, "bad": bad_img, "alt_bad": alt_bad_img}
         for i in range(1, 11):
             obj_id = f"NO{i}"
-            good_img, bad_img = _position_images(iib_new_dir / obj_id)
-            iib_positions[obj_id] = {"good": good_img, "bad": bad_img}
+            good_img, bad_img, alt_bad_img = _position_images(
+                iib_new_dir / obj_id,
+                good_prefix="Position_NO_OK",
+                bad_prefixes=["Position_NO_Wrong1", "Position_NO_Wrong2"],
+                allow_good_fallback=False,
+            )
+            iib_positions[obj_id] = {"good": good_img, "bad": bad_img, "alt_bad": alt_bad_img}
 
         return {
             "experiment_name": "HARMORYC_V2",
@@ -951,6 +1003,7 @@ class ExperimentApp:
             "familiar_objects": familiar_objects,
             "new_objects": new_objects,
             "rappel_immediat_trials": rappel_immediat_trials,
+            "step5_trials": self._build_trials_from_dirs(step5_correct_dir, step5_incorrect_dir),
             "iib_positions": iib_positions,
         }
 
@@ -1204,26 +1257,23 @@ class ExperimentApp:
             
             card = ft.Container(
                 content=ft.Column([
+                    # Image de salle plus grande, sans texte ni numéro sous l'image
                     ft.Image(
                         src=rimage,
-                        height=120,
-                        width=160,
+                        height=170,
+                        width=230,
                         fit="cover",
                         border_radius=ft.border_radius.only(top_left=8, top_right=8),
                         error_content=ft.Container(
-                            content=ft.Icon(ft.Icons.MEETING_ROOM, size=30, color=ft.Colors.GREY_600),
-                            height=80,
-                            width=110,
+                            content=ft.Icon(ft.Icons.MEETING_ROOM, size=40, color=ft.Colors.GREY_600),
+                            height=120,
+                            width=160,
                             alignment=ft.Alignment(0, 0),
                             bgcolor=ft.Colors.GREY_200,
                         ),
                     ),
-                    ft.Container(
-                        content=ft.Text(rname, size=12, weight=ft.FontWeight.W_500, text_align=ft.TextAlign.CENTER),
-                        padding=5,
-                    ),
                 ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                width=170,
+                width=240,
                 bgcolor=ft.Colors.WHITE,
                 border=ft.border.all(1, ft.Colors.GREY_400),
                 border_radius=8,
@@ -1315,17 +1365,25 @@ class ExperimentApp:
         if task.get("kind") == "step1" and response_value == "yes":
             obj = task["object"]
             rooms = self.data.get("rooms") or []
-            ordered_rooms = self._rooms_by_ids(self.iia_room_order, rooms)
-            if not ordered_rooms:
-                ordered_rooms = rooms
+            ordered_rooms = self._rooms_by_ids(ROOM_GRID_ORDER, rooms)
+            for room in rooms:
+                if room not in ordered_rooms:
+                    ordered_rooms.append(room)
             iib_positions = self.data.get("iib_positions") or {}
             pos = iib_positions.get(obj.get("id"), {})
             good_img = pos.get("good")
             bad_img = pos.get("bad")
-            choices = [
-                {"id": "good", "image": good_img, "is_correct": True},
-                {"id": "bad", "image": bad_img, "is_correct": False},
-            ]
+            alt_bad_img = pos.get("alt_bad")
+            if bool(obj.get("is_familiar")):
+                choices = [
+                    {"id": "good", "image": good_img, "is_correct": True},
+                    {"id": "bad", "image": bad_img, "is_correct": False},
+                ]
+            else:
+                choices = [
+                    {"id": "bad1", "image": bad_img, "is_correct": False},
+                    {"id": "bad2", "image": alt_bad_img, "is_correct": False},
+                ]
             random.shuffle(choices)
             insert_at = self.current_task_index + 1
             self.task_queue[insert_at:insert_at] = [
@@ -1537,6 +1595,344 @@ class ExperimentApp:
             metrics["step4_order"]["mean_abs_error"] = sum(order_errors) / len(order_errors)
         return metrics
 
+    def _load_all_sessions(self) -> List[Dict[str, Any]]:
+        """Load all session JSON files from sessions directory."""
+        if not HAS_EXCEL_SUPPORT:
+            return []
+        
+        sessions_data = []
+        sessions_path = Path(SESSIONS_DIR)
+        if not sessions_path.exists():
+            return sessions_data
+        
+        for json_file in sessions_path.glob("*.json"):
+            if json_file.name == "example_session.json":
+                continue  # Skip example file
+            try:
+                with open(json_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if "session" in data:
+                        sessions_data.append(data)
+            except Exception:
+                # Skip corrupted files
+                continue
+        
+        return sessions_data
+
+    def _generate_summary_excel(self, sessions_data: List[Dict[str, Any]]) -> None:
+        """Generate Excel summary file with one row per session."""
+        if not HAS_EXCEL_SUPPORT or not sessions_data:
+            return
+        
+        try:
+            rows = []
+            for session_data in sessions_data:
+                session = session_data.get("session", {})
+                scores = session.get("scores", {})
+                metrics = session.get("metrics", {})
+                
+                # Calculate percentages
+                def calc_percentage(stage_key: str) -> Optional[float]:
+                    stage_scores = scores.get(stage_key, {})
+                    total = stage_scores.get("total", 0)
+                    correct = stage_scores.get("correct", 0)
+                    if total > 0:
+                        return (correct / total) * 100.0
+                    return None
+                
+                # Calculate duration
+                duration_minutes = None
+                started_at = session.get("started_at")
+                ended_at = session.get("ended_at")
+                if started_at and ended_at:
+                    try:
+                        start_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                        end_dt = datetime.fromisoformat(ended_at.replace("Z", "+00:00"))
+                        duration_minutes = (end_dt - start_dt).total_seconds() / 60.0
+                    except Exception:
+                        pass
+                
+                # Extract metrics
+                step1_metrics = metrics.get("step1", {})
+                step2_where_metrics = metrics.get("step2_where", {})
+                step2_spatial_metrics = metrics.get("step2_spatial", {})
+                step3_metrics = metrics.get("step3_daynight", {})
+                step4_metrics = metrics.get("step4_order", {})
+                step5_metrics = metrics.get("step5", {})
+                ri_metrics = metrics.get("rappel_immediat", {})
+                
+                row = {
+                    "session_id": session.get("session_id", ""),
+                    "subject_id": session.get("subject_id", ""),
+                    "started_at": started_at,
+                    "ended_at": ended_at,
+                    "task_mode": session.get("task_mode", ""),
+                    "experiment_name": session.get("experiment_name", ""),
+                    # Scores bruts
+                    "I_total": scores.get("I", {}).get("total", 0),
+                    "I_correct": scores.get("I", {}).get("correct", 0),
+                    "IIA_total": scores.get("IIA", {}).get("total", 0),
+                    "IIA_correct": scores.get("IIA", {}).get("correct", 0),
+                    "IIB_total": scores.get("IIB", {}).get("total", 0),
+                    "IIB_correct": scores.get("IIB", {}).get("correct", 0),
+                    "III_total": scores.get("III", {}).get("total", 0),
+                    "III_correct": scores.get("III", {}).get("correct", 0),
+                    "IV_total": scores.get("IV", {}).get("total", 0),
+                    "IV_correct": scores.get("IV", {}).get("correct", 0),
+                    "V_total": scores.get("V", {}).get("total", 0),
+                    "V_correct": scores.get("V", {}).get("correct", 0),
+                    "RI_total": scores.get("RI", {}).get("total", 0),
+                    "RI_correct": scores.get("RI", {}).get("correct", 0),
+                    # Pourcentages
+                    "I_%": calc_percentage("I"),
+                    "IIA_%": calc_percentage("IIA"),
+                    "IIB_%": calc_percentage("IIB"),
+                    "III_%": calc_percentage("III"),
+                    "IV_%": calc_percentage("IV"),
+                    "V_%": calc_percentage("V"),
+                    "RI_%": calc_percentage("RI"),
+                    # Métriques Étape I
+                    "step1_hit": step1_metrics.get("hit", 0),
+                    "step1_false_alarm": step1_metrics.get("false_alarm", 0),
+                    "step1_miss": step1_metrics.get("miss", 0),
+                    "step1_correct_rejection": step1_metrics.get("correct_rejection", 0),
+                    # Métriques Étape IIA
+                    "step2_where_correct_room": step2_where_metrics.get("correct_room", 0),
+                    "step2_where_wrong_room": step2_where_metrics.get("wrong_room", 0),
+                    # Métriques Étape IIB
+                    "step2_spatial_correct_position": step2_spatial_metrics.get("correct_position", 0),
+                    "step2_spatial_wrong_position": step2_spatial_metrics.get("wrong_position", 0),
+                    # Métriques Étape III
+                    "step3_correct_time": step3_metrics.get("correct_time", 0),
+                    "step3_wrong_time": step3_metrics.get("wrong_time", 0),
+                    # Métriques Étape IV
+                    "step4_correct_order": step4_metrics.get("correct_order", 0),
+                    "step4_mean_abs_error": step4_metrics.get("mean_abs_error"),
+                    # Métriques Étape V
+                    "step5_correct_scene": step5_metrics.get("correct_scene", 0),
+                    "step5_wrong_scene": step5_metrics.get("wrong_scene", 0),
+                    # Métriques RI
+                    "rappel_immediat_correct_scene": ri_metrics.get("correct_scene", 0),
+                    "rappel_immediat_wrong_scene": ri_metrics.get("wrong_scene", 0),
+                    # Durée
+                    "duration_minutes": duration_minutes,
+                }
+                rows.append(row)
+            
+            df = pd.DataFrame(rows)
+            
+            # Sort by started_at if available
+            if "started_at" in df.columns:
+                df["started_at_parsed"] = pd.to_datetime(df["started_at"], errors="coerce")
+                df = df.sort_values("started_at_parsed", na_position="last")
+                df = df.drop(columns=["started_at_parsed"])
+            
+            # Save to Excel
+            excel_path = Path(SESSIONS_DIR) / "summary.xlsx"
+            with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
+                df.to_excel(writer, sheet_name="Sessions", index=False)
+                
+                # Format the worksheet
+                worksheet = writer.sheets["Sessions"]
+                
+                # Header formatting
+                header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                header_font = Font(bold=True, color="FFFFFF")
+                
+                for cell in worksheet[1]:
+                    cell.fill = header_fill
+                    cell.font = header_font
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                
+                # Auto-adjust column widths
+                for column in worksheet.columns:
+                    max_length = 0
+                    column_letter = get_column_letter(column[0].column)
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except Exception:
+                            pass
+                    adjusted_width = min(max_length + 2, 50)
+                    worksheet.column_dimensions[column_letter].width = adjusted_width
+                
+                # Format percentage columns
+                for col_idx, col_name in enumerate(df.columns, start=1):
+                    if col_name.endswith("_%"):
+                        col_letter = get_column_letter(col_idx)
+                        for row_idx in range(2, len(df) + 2):
+                            cell = worksheet[f"{col_letter}{row_idx}"]
+                            if cell.value is not None:
+                                cell.number_format = "0.00"
+                
+        except Exception:
+            # Silently fail - don't block session save
+            pass
+
+    def _generate_summary_graphics(self, sessions_data: List[Dict[str, Any]]) -> None:
+        """Generate summary graphics from all sessions."""
+        if not HAS_EXCEL_SUPPORT or len(sessions_data) < 1:
+            return
+        
+        try:
+            # Prepare data
+            stages = ["I", "IIA", "IIB", "III", "IV", "V", "RI"]
+            percentages_by_stage = {stage: [] for stage in stages}
+            dates = []
+            
+            for session_data in sessions_data:
+                session = session_data.get("session", {})
+                scores = session.get("scores", {})
+                
+                # Calculate percentages
+                for stage in stages:
+                    stage_scores = scores.get(stage, {})
+                    total = stage_scores.get("total", 0)
+                    correct = stage_scores.get("correct", 0)
+                    if total > 0:
+                        percentages_by_stage[stage].append((correct / total) * 100.0)
+                    else:
+                        percentages_by_stage[stage].append(None)
+                
+                # Extract date
+                started_at = session.get("started_at")
+                if started_at:
+                    try:
+                        date_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                        dates.append(date_dt)
+                    except Exception:
+                        dates.append(None)
+                else:
+                    dates.append(None)
+            
+            # Filter out None dates for time series
+            valid_indices = [i for i, d in enumerate(dates) if d is not None]
+            if len(valid_indices) < 1:
+                dates_valid = None
+            else:
+                dates_valid = [dates[i] for i in valid_indices]
+            
+            # Create figure with subplots
+            fig = plt.figure(figsize=(16, 12))
+            plt.rcParams['font.size'] = 9
+            
+            # 1. Bar chart: Average scores by stage
+            ax1 = plt.subplot(2, 2, 1)
+            stage_means = []
+            stage_stds = []
+            stage_labels = []
+            
+            for stage in stages:
+                pcts = [p for p in percentages_by_stage[stage] if p is not None]
+                if pcts:
+                    stage_means.append(sum(pcts) / len(pcts))
+                    if len(pcts) > 1:
+                        variance = sum((x - stage_means[-1]) ** 2 for x in pcts) / (len(pcts) - 1)
+                        stage_stds.append(variance ** 0.5)
+                    else:
+                        stage_stds.append(0)
+                    stage_labels.append(stage)
+                else:
+                    stage_means.append(0)
+                    stage_stds.append(0)
+                    stage_labels.append(stage)
+            
+            x_pos = range(len(stage_labels))
+            bars = ax1.bar(x_pos, stage_means, yerr=stage_stds, capsize=5, color='steelblue', alpha=0.7)
+            ax1.set_xlabel("Étape")
+            ax1.set_ylabel("Pourcentage de réussite (%)")
+            ax1.set_title("Scores moyens par étape")
+            ax1.set_xticks(x_pos)
+            ax1.set_xticklabels(stage_labels)
+            ax1.set_ylim(0, 100)
+            ax1.grid(True, alpha=0.3, axis='y')
+            
+            # 2. Line chart: Evolution over time
+            ax2 = plt.subplot(2, 2, 2)
+            if dates_valid and len(dates_valid) > 1:
+                for stage in stages:
+                    pcts_valid = [percentages_by_stage[stage][i] for i in valid_indices if percentages_by_stage[stage][i] is not None]
+                    dates_stage = [dates_valid[i] for i in range(len(valid_indices)) if percentages_by_stage[stage][valid_indices[i]] is not None]
+                    if len(dates_stage) > 0:
+                        ax2.plot(dates_stage, pcts_valid, marker='o', label=stage, linewidth=2, markersize=4)
+                
+                ax2.set_xlabel("Date")
+                ax2.set_ylabel("Pourcentage de réussite (%)")
+                ax2.set_title("Évolution des scores dans le temps")
+                ax2.legend(loc='best', fontsize=8)
+                ax2.grid(True, alpha=0.3)
+                ax2.set_ylim(0, 100)
+                plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, ha='right')
+            else:
+                ax2.text(0.5, 0.5, "Données insuffisantes\npour l'évolution temporelle", 
+                        ha='center', va='center', transform=ax2.transAxes)
+                ax2.set_title("Évolution des scores dans le temps")
+            
+            # 3. Histograms: Distribution of performance
+            ax3 = plt.subplot(2, 2, 3)
+            # Combine all percentages for overall distribution
+            all_pcts = []
+            for stage in stages:
+                all_pcts.extend([p for p in percentages_by_stage[stage] if p is not None])
+            
+            if all_pcts:
+                ax3.hist(all_pcts, bins=20, range=(0, 100), color='steelblue', alpha=0.7, edgecolor='black')
+                ax3.set_xlabel("Pourcentage de réussite (%)")
+                ax3.set_ylabel("Nombre de sessions")
+                ax3.set_title("Distribution globale des performances")
+                ax3.grid(True, alpha=0.3, axis='y')
+            else:
+                ax3.text(0.5, 0.5, "Aucune donnée disponible", 
+                        ha='center', va='center', transform=ax3.transAxes)
+                ax3.set_title("Distribution globale des performances")
+            
+            # 4. Combined chart: Step I metrics
+            ax4 = plt.subplot(2, 2, 4)
+            step1_hits = []
+            step1_false_alarms = []
+            step1_misses = []
+            step1_correct_rejections = []
+            
+            for session_data in sessions_data:
+                metrics = session_data.get("session", {}).get("metrics", {})
+                step1_metrics = metrics.get("step1", {})
+                step1_hits.append(step1_metrics.get("hit", 0))
+                step1_false_alarms.append(step1_metrics.get("false_alarm", 0))
+                step1_misses.append(step1_metrics.get("miss", 0))
+                step1_correct_rejections.append(step1_metrics.get("correct_rejection", 0))
+            
+            if step1_hits:
+                x_pos_metrics = range(len(step1_hits))
+                width = 0.2
+                ax4.bar([x - 1.5*width for x in x_pos_metrics], step1_hits, width, label='Hits', color='green', alpha=0.7)
+                ax4.bar([x - 0.5*width for x in x_pos_metrics], step1_false_alarms, width, label='Fausses alarmes', color='red', alpha=0.7)
+                ax4.bar([x + 0.5*width for x in x_pos_metrics], step1_misses, width, label='Misses', color='orange', alpha=0.7)
+                ax4.bar([x + 1.5*width for x in x_pos_metrics], step1_correct_rejections, width, label='Rejets corrects', color='blue', alpha=0.7)
+                
+                ax4.set_xlabel("Session")
+                ax4.set_ylabel("Nombre")
+                ax4.set_title("Métriques principales - Étape I")
+                ax4.legend(loc='best', fontsize=8)
+                ax4.set_xticks(x_pos_metrics)
+                ax4.set_xticklabels([f"S{i+1}" for i in range(len(step1_hits))], rotation=45, ha='right')
+                ax4.grid(True, alpha=0.3, axis='y')
+            else:
+                ax4.text(0.5, 0.5, "Aucune donnée disponible", 
+                        ha='center', va='center', transform=ax4.transAxes)
+                ax4.set_title("Métriques principales - Étape I")
+            
+            plt.tight_layout()
+            
+            # Save figure
+            graphics_path = Path(SESSIONS_DIR) / "summary_graphics.png"
+            plt.savefig(graphics_path, dpi=150, bbox_inches='tight')
+            plt.close(fig)
+            
+        except Exception:
+            # Silently fail - don't block session save
+            pass
+
     def _save_session(self, vr_msgs: List[Dict[str, Any]]) -> None:
         start_perf = self.session_start_perf or time.perf_counter()
         vr_serialized: List[Dict[str, Any]] = []
@@ -1584,6 +1980,15 @@ class ExperimentApp:
             with open(out_path, "w", encoding="utf-8") as f:
                 json.dump(out, f, indent=2, ensure_ascii=False)
         except Exception:
+            pass
+        
+        # Generate Excel summary and graphics
+        try:
+            all_sessions = self._load_all_sessions()
+            self._generate_summary_excel(all_sessions)
+            self._generate_summary_graphics(all_sessions)
+        except Exception:
+            # Silently fail - don't block session save
             pass
 
     # ---------------------------
