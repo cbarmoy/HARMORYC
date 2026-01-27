@@ -1998,7 +1998,7 @@ class ExperimentApp:
         self.page.snack_bar = ft.SnackBar(
             ft.Text(message),
             bgcolor=ft.Colors.RED_400,
-            action=ft.SnackBarAction(text="OK"),
+            action=ft.SnackBarAction(label="OK"),
         )
         self.page.snack_bar.open = True
         self.page.update()

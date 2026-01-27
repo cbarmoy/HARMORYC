@@ -1,0 +1,339 @@
+{
+  "experiment_name": "MemoireEpisodique_v1",
+  "rooms": [
+    {
+      "id": "room1",
+      "name": "Salle 1",
+      "image": "assets/rooms/room1.jpg"
+    },
+    {
+      "id": "room2",
+      "name": "Salle 2",
+      "image": "assets/rooms/room2.jpg"
+    },
+    {
+      "id": "room3",
+      "name": "Salle 3",
+      "image": "assets/rooms/room3.jpg"
+    },
+    {
+      "id": "room4",
+      "name": "Salle 4",
+      "image": "assets/rooms/room4.jpg"
+    },
+    {
+      "id": "room5",
+      "name": "Salle 5",
+      "image": "assets/rooms/room5.jpg"
+    },
+    {
+      "id": "room6",
+      "name": "Salle 6",
+      "image": "assets/rooms/room6.jpg"
+    },
+    {
+      "id": "room7",
+      "name": "Salle 7",
+      "image": "assets/rooms/room7.jpg"
+    },
+    {
+      "id": "room8",
+      "name": "Salle 8",
+      "image": "assets/rooms/room8.jpg"
+    },
+    {
+      "id": "room9",
+      "name": "Salle 9",
+      "image": "assets/rooms/room9.jpg"
+    },
+    {
+      "id": "room10",
+      "name": "Salle 10",
+      "image": "assets/rooms/room10.jpg"
+    }
+  ],
+  "familiar_objects": [
+    {
+      "id": "obj1",
+      "name": "Objet 1",
+      "image": "assets/objects/obj1.jpg",
+      "room_id": "room1",
+      "timing": "jour"
+    },
+    {
+      "id": "obj2",
+      "name": "Objet 2",
+      "image": "assets/objects/obj2.jpg",
+      "room_id": "room2",
+      "timing": "nuit"
+    },
+    {
+      "id": "obj3",
+      "name": "Objet 3",
+      "image": "assets/objects/obj3.jpg",
+      "room_id": "room3",
+      "timing": "jour"
+    },
+    {
+      "id": "obj4",
+      "name": "Objet 4",
+      "image": "assets/objects/obj4.jpg",
+      "room_id": "room4",
+      "timing": "nuit"
+    },
+    {
+      "id": "obj5",
+      "name": "Objet 5",
+      "image": "assets/objects/obj5.jpg",
+      "room_id": "room5",
+      "timing": "jour"
+    },
+    {
+      "id": "obj6",
+      "name": "Objet 6",
+      "image": "assets/objects/obj6.jpg",
+      "room_id": "room6",
+      "timing": "nuit"
+    },
+    {
+      "id": "obj7",
+      "name": "Objet 7",
+      "image": "assets/objects/obj7.jpg",
+      "room_id": "room7",
+      "timing": "jour"
+    },
+    {
+      "id": "obj8",
+      "name": "Objet 8",
+      "image": "assets/objects/obj8.jpg",
+      "room_id": "room8",
+      "timing": "nuit"
+    },
+    {
+      "id": "obj9",
+      "name": "Objet 9",
+      "image": "assets/objects/obj9.jpg",
+      "room_id": "room9",
+      "timing": "jour"
+    },
+    {
+      "id": "obj10",
+      "name": "Objet 10",
+      "image": "assets/objects/obj10.jpg",
+      "room_id": "room10",
+      "timing": "nuit"
+    }
+  ],
+  "new_objects": [
+    {
+      "id": "new1",
+      "name": "Nouvel objet 1",
+      "image": "assets/objects/new1.jpg"
+    },
+    {
+      "id": "new2",
+      "name": "Nouvel objet 2",
+      "image": "assets/objects/new2.jpg"
+    },
+    {
+      "id": "new3",
+      "name": "Nouvel objet 3",
+      "image": "assets/objects/new3.jpg"
+    },
+    {
+      "id": "new4",
+      "name": "Nouvel objet 4",
+      "image": "assets/objects/new4.jpg"
+    },
+    {
+      "id": "new5",
+      "name": "Nouvel objet 5",
+      "image": "assets/objects/new5.jpg"
+    },
+    {
+      "id": "new6",
+      "name": "Nouvel objet 6",
+      "image": "assets/objects/new6.jpg"
+    },
+    {
+      "id": "new7",
+      "name": "Nouvel objet 7",
+      "image": "assets/objects/new7.jpg"
+    },
+    {
+      "id": "new8",
+      "name": "Nouvel objet 8",
+      "image": "assets/objects/new8.jpg"
+    },
+    {
+      "id": "new9",
+      "name": "Nouvel objet 9",
+      "image": "assets/objects/new9.jpg"
+    },
+    {
+      "id": "new10",
+      "name": "Nouvel objet 10",
+      "image": "assets/objects/new10.jpg"
+    }
+  ],
+  "step4_trials": [
+    {
+      "id": "step4_1",
+      "image": "assets/composites/step4_1.jpg",
+      "is_correct": true,
+      "description": "Scène 1"
+    },
+    {
+      "id": "step4_2",
+      "image": "assets/composites/step4_2.jpg",
+      "is_correct": false,
+      "description": "Scène 2"
+    },
+    {
+      "id": "step4_3",
+      "image": "assets/composites/step4_3.jpg",
+      "is_correct": true,
+      "description": "Scène 3"
+    },
+    {
+      "id": "step4_4",
+      "image": "assets/composites/step4_4.jpg",
+      "is_correct": false,
+      "description": "Scène 4"
+    },
+    {
+      "id": "step4_5",
+      "image": "assets/composites/step4_5.jpg",
+      "is_correct": true,
+      "description": "Scène 5"
+    },
+    {
+      "id": "step4_6",
+      "image": "assets/composites/step4_6.jpg",
+      "is_correct": false,
+      "description": "Scène 6"
+    },
+    {
+      "id": "step4_7",
+      "image": "assets/composites/step4_7.jpg",
+      "is_correct": true,
+      "description": "Scène 7"
+    },
+    {
+      "id": "step4_8",
+      "image": "assets/composites/step4_8.jpg",
+      "is_correct": false,
+      "description": "Scène 8"
+    },
+    {
+      "id": "step4_9",
+      "image": "assets/composites/step4_9.jpg",
+      "is_correct": true,
+      "description": "Scène 9"
+    },
+    {
+      "id": "step4_10",
+      "image": "assets/composites/step4_10.jpg",
+      "is_correct": false,
+      "description": "Scène 10"
+    },
+    {
+      "id": "step4_11",
+      "image": "assets/composites/step4_11.jpg",
+      "is_correct": true,
+      "description": "Scène 11"
+    },
+    {
+      "id": "step4_12",
+      "image": "assets/composites/step4_12.jpg",
+      "is_correct": false,
+      "description": "Scène 12"
+    },
+    {
+      "id": "step4_13",
+      "image": "assets/composites/step4_13.jpg",
+      "is_correct": true,
+      "description": "Scène 13"
+    },
+    {
+      "id": "step4_14",
+      "image": "assets/composites/step4_14.jpg",
+      "is_correct": false,
+      "description": "Scène 14"
+    },
+    {
+      "id": "step4_15",
+      "image": "assets/composites/step4_15.jpg",
+      "is_correct": true,
+      "description": "Scène 15"
+    },
+    {
+      "id": "step4_16",
+      "image": "assets/composites/step4_16.jpg",
+      "is_correct": false,
+      "description": "Scène 16"
+    },
+    {
+      "id": "step4_17",
+      "image": "assets/composites/step4_17.jpg",
+      "is_correct": true,
+      "description": "Scène 17"
+    },
+    {
+      "id": "step4_18",
+      "image": "assets/composites/step4_18.jpg",
+      "is_correct": false,
+      "description": "Scène 18"
+    },
+    {
+      "id": "step4_19",
+      "image": "assets/composites/step4_19.jpg",
+      "is_correct": true,
+      "description": "Scène 19"
+    },
+    {
+      "id": "step4_20",
+      "image": "assets/composites/step4_20.jpg",
+      "is_correct": false,
+      "description": "Scène 20"
+    }
+  ],
+  "rappel_immediat_trials": [
+    {
+      "id": "rappel_immediat_1",
+      "image": "assets/composites/rappel_immediat_1.jpg",
+      "is_correct": true,
+      "description": "Scène RI 1"
+    },
+    {
+      "id": "rappel_immediat_2",
+      "image": "assets/composites/rappel_immediat_2.jpg",
+      "is_correct": false,
+      "description": "Scène RI 2"
+    },
+    {
+      "id": "rappel_immediat_3",
+      "image": "assets/composites/rappel_immediat_3.jpg",
+      "is_correct": true,
+      "description": "Scène RI 3"
+    },
+    {
+      "id": "rappel_immediat_4",
+      "image": "assets/composites/rappel_immediat_4.jpg",
+      "is_correct": false,
+      "description": "Scène RI 4"
+    },
+    {
+      "id": "rappel_immediat_5",
+      "image": "assets/composites/rappel_immediat_5.jpg",
+      "is_correct": true,
+      "description": "Scène RI 5"
+    },
+    {
+      "id": "rappel_immediat_6",
+      "image": "assets/composites/rappel_immediat_6.jpg",
+      "is_correct": false,
+      "description": "Scène RI 6"
+    }
+  ]
+}
