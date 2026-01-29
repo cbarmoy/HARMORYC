@@ -57,11 +57,11 @@ RAPPEL_IMMEDIAT_DURATION_MS = 10000  # Rappel immédiat
 INTER_DELAY_MS = 3000      # Écran uniforme entre questions
 
 # Image heights by question type (uniform per type)
-IMAGE_HEIGHT_STEP1 = 320       # Étape I - what?
-IMAGE_HEIGHT_STEP2 = 280       # Étape II - where/when
-IMAGE_HEIGHT_STEP3 = 250       # Étape III - what-where-when
-IMAGE_HEIGHT_STEP4 = 320       # Étape IV - test ultime
-IMAGE_HEIGHT_RAPPEL = 320      # Rappel immédiat
+IMAGE_HEIGHT_STEP1 = 460       # Étape I - what?
+IMAGE_HEIGHT_STEP2 = 420       # Étape II - where/when
+IMAGE_HEIGHT_STEP3 = 380       # Étape III - what-where-when
+IMAGE_HEIGHT_STEP4 = 460       # Étape IV - test ultime
+IMAGE_HEIGHT_RAPPEL = 460      # Rappel immédiat
 
 
 def now_iso() -> str:
@@ -176,7 +176,11 @@ class VRWebSocketServer:
                 async def start_server():
                     return await websockets.serve(self._handler, self.host, self.port)
 
-                self._server = self._loop.run_until_complete(start_server())
+                try:
+                    self._server = self._loop.run_until_complete(start_server())
+                except OSError:
+                    # Port already in use; keep server disabled but don't crash app
+                    return
                 self._running.set()
                 self._loop.run_forever()
             finally:
@@ -389,7 +393,7 @@ class ExperimentApp:
             ], spacing=0),
             width=280,
             bgcolor=ft.Colors.WHITE,
-            border=ft.border.only(right=ft.BorderSide(1, ft.Colors.GREY_400)),
+            border=ft.Border.only(right=ft.BorderSide(1, ft.Colors.GREY_400)),
             visible=False,
         )
 
@@ -671,19 +675,6 @@ class ExperimentApp:
                 "duration_ms": STEP4_DURATION_MS,
             })
 
-        # Rappel immédiat final (même logique que RI)
-        final_ri = self._pick_balanced_trials(rappel_immediat_trials, rand)
-        rand.shuffle(final_ri)
-        for t in final_ri:
-            tasks.append({
-                "task_id": f"ri_end_{t.get('id')}",
-                "kind": "rappel_immediat",
-                "stage": "RI_END",
-                "image": t.get("image"),
-                "is_correct": bool(t.get("is_correct")),
-                "duration_ms": RAPPEL_IMMEDIAT_DURATION_MS,
-            })
-
         return tasks
 
     def _go_to_next_task(self):
@@ -708,7 +699,7 @@ class ExperimentApp:
         elif kind == "step3_daynight":
             return "Faisait-il jour ou nuit ?"
         elif kind == "step4_order":
-            return "À quel moment cette salle a-t-elle été vue ? (1 = première salle vue, 10 = dernière salle vue)"
+            return "À quel moment cette salle a-t-elle été vue ?"
         elif kind == "step5":
             return "Cette scène est-elle correcte ?"
         elif kind == "rappel_immediat":
@@ -736,7 +727,13 @@ class ExperimentApp:
 
         if kind == "step1":
             obj = task["object"]
-            content.append(self._image_or_default(obj.get("image"), image_type="object", height=IMAGE_HEIGHT_STEP1))
+            content.append(
+                self._image_or_default(
+                    obj.get("image"),
+                    image_type="object",
+                    height=self._scale_size(IMAGE_HEIGHT_STEP1, min_value=240),
+                )
+            )
             content.append(ft.Container(height=30))
             content.append(self._button_row_yes_no())
             content.append(ft.Container(height=20))
@@ -744,8 +741,13 @@ class ExperimentApp:
 
         elif kind == "step2_where":
             obj = task["object"]
-            # Image de question un peu plus petite pour laisser plus de place aux réponses
-            content.append(self._image_or_default(obj.get("image"), image_type="object", height=200))
+            content.append(
+                self._image_or_default(
+                    obj.get("image"),
+                    image_type="object",
+                    height=self._scale_size(260, min_value=160),
+                )
+            )
             content.append(ft.Container(height=20))
             content.append(self._rooms_grid(task["rooms"]))
             content.append(ft.Container(height=15))
@@ -753,15 +755,27 @@ class ExperimentApp:
 
         elif kind == "step2_spatial":
             obj = task.get("object", {})
-            content.append(self._image_or_default(obj.get("image"), image_type="object", height=240))
-            content.append(ft.Container(height=15))
+            content.append(
+                self._image_or_default(
+                    obj.get("image"),
+                    image_type="object",
+                    height=self._scale_size(240, min_value=150),
+                )
+            )
+            content.append(ft.Container(height=8))
             content.append(self._button_row_image_choices(task.get("choices") or []))
-            content.append(ft.Container(height=15))
+            content.append(ft.Container(height=8))
             content.append(self._button_je_ne_sais_pas())
 
         elif kind == "step3_daynight":
             room = task.get("room", {})
-            content.append(self._image_or_default(room.get("image"), image_type="room", height=IMAGE_HEIGHT_STEP3))
+            content.append(
+                self._image_or_default(
+                    room.get("image"),
+                    image_type="room",
+                    height=self._scale_size(IMAGE_HEIGHT_STEP3, min_value=200),
+                )
+            )
             content.append(ft.Container(height=20))
             content.append(self._button_row_timing())
             content.append(ft.Container(height=15))
@@ -769,21 +783,41 @@ class ExperimentApp:
 
         elif kind == "step4_order":
             room = task.get("room", {})
-            content.append(self._image_or_default(room.get("image"), image_type="room", height=IMAGE_HEIGHT_STEP4))
+            content.append(
+                self._image_or_default(
+                    room.get("image"),
+                    image_type="room",
+                    height=self._scale_size(IMAGE_HEIGHT_STEP4, min_value=240),
+                )
+            )
             content.append(ft.Container(height=20))
             content.append(self._button_row_numbers(1, 10))
+            content.append(ft.Container(height=10))
+            content.append(self._step4_order_hint())
             content.append(ft.Container(height=15))
             content.append(self._button_je_ne_sais_pas())
 
         elif kind == "rappel_immediat":
-            content.append(self._image_or_default(task.get("image"), image_type="object", height=IMAGE_HEIGHT_RAPPEL))
+            content.append(
+                self._image_or_default(
+                    task.get("image"),
+                    image_type="object",
+                    height=self._scale_size(IMAGE_HEIGHT_RAPPEL, min_value=240),
+                )
+            )
             content.append(ft.Container(height=30))
             content.append(self._button_row_correct_incorrect())
             content.append(ft.Container(height=15))
             content.append(self._button_je_ne_sais_pas())
 
         elif kind == "step5":
-            content.append(self._image_or_default(task.get("image"), image_type="object", height=IMAGE_HEIGHT_STEP4))
+            content.append(
+                self._image_or_default(
+                    task.get("image"),
+                    image_type="object",
+                    height=self._scale_size(IMAGE_HEIGHT_STEP4, min_value=240),
+                )
+            )
             content.append(ft.Container(height=30))
             content.append(self._button_row_correct_incorrect())
             content.append(ft.Container(height=15))
@@ -1026,6 +1060,28 @@ class ExperimentApp:
             error_content=ft.Text("Image introuvable", size=20),
         )
 
+    def _ui_scale(self) -> float:
+        height = getattr(self.page, "window_height", None) or getattr(self.page, "height", None) or 900
+        width = getattr(self.page, "window_width", None) or getattr(self.page, "width", None) or 1400
+        try:
+            scale = min(height / 900.0, width / 1400.0, 1.0)
+        except Exception:
+            scale = 1.0
+        return max(0.6, float(scale))
+
+    def _scale_size(self, value: int, min_value: int = 0, max_value: Optional[int] = None) -> int:
+        scaled = int(value * self._ui_scale())
+        if min_value:
+            scaled = max(min_value, scaled)
+        if max_value is not None:
+            scaled = min(max_value, scaled)
+        return scaled
+
+    def _step4_button_metrics(self) -> Tuple[int, int]:
+        spacing = self._scale_size(10, min_value=6)
+        width = self._scale_size(84, min_value=72)
+        return width, spacing
+
     def _button_row_yes_no(self) -> ft.Control:
         btn_yes = ft.FilledButton(
             content=ft.Text("Oui", size=20),
@@ -1072,12 +1128,12 @@ class ExperimentApp:
             content=ft.Column([
                 ft.Image(
                     src=f"{ASSETS_DIR}/Default_Day.jpg",
-                    height=150,
+                    height=self._scale_size(200, min_value=140),
                     fit="cover",
-                    border_radius=ft.border_radius.only(top_left=12, top_right=12),
+                    border_radius=ft.BorderRadius.only(top_left=12, top_right=12),
                     error_content=ft.Container(
                         content=ft.Icon(ft.Icons.WB_SUNNY, size=60, color=ft.Colors.ORANGE_400),
-                        height=150,
+                        height=self._scale_size(200, min_value=140),
                         alignment=ft.Alignment(0, 0),
                         bgcolor=ft.Colors.AMBER_100,
                     ),
@@ -1087,7 +1143,7 @@ class ExperimentApp:
                     padding=10,
                 ),
             ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-            width=180,
+            width=self._scale_size(220, min_value=160),
             bgcolor=ft.Colors.WHITE,
             border=ft.border.all(2, ft.Colors.GREY_400),
             border_radius=12,
@@ -1099,12 +1155,12 @@ class ExperimentApp:
             content=ft.Column([
                 ft.Image(
                     src=f"{ASSETS_DIR}/Default_Night.jpg",
-                    height=150,
+                    height=self._scale_size(200, min_value=140),
                     fit="cover",
-                    border_radius=ft.border_radius.only(top_left=12, top_right=12),
+                    border_radius=ft.BorderRadius.only(top_left=12, top_right=12),
                     error_content=ft.Container(
                         content=ft.Icon(ft.Icons.NIGHTLIGHT_ROUND, size=60, color=ft.Colors.INDIGO_400),
-                        height=150,
+                        height=self._scale_size(200, min_value=140),
                         alignment=ft.Alignment(0, 0),
                         bgcolor=ft.Colors.INDIGO_100,
                     ),
@@ -1114,7 +1170,7 @@ class ExperimentApp:
                     padding=10,
                 ),
             ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-            width=180,
+            width=self._scale_size(220, min_value=160),
             bgcolor=ft.Colors.WHITE,
             border=ft.border.all(2, ft.Colors.GREY_400),
             border_radius=12,
@@ -1130,12 +1186,14 @@ class ExperimentApp:
         )
 
     def _button_row_numbers(self, start: int, end: int) -> ft.Control:
+        button_width, button_spacing = self._step4_button_metrics()
+        button_height = self._scale_size(60, min_value=48)
         buttons = []
         for i in range(start, end + 1):
             btn = ft.OutlinedButton(
-                content=ft.Text(str(i), size=16),
-                width=70,
-                height=50,
+                content=ft.Text(str(i), size=20),
+                width=button_width,
+                height=button_height,
                 on_click=lambda _, v=str(i): self._on_choice(v),
             )
             self.choice_buttons[str(i)] = btn
@@ -1143,9 +1201,49 @@ class ExperimentApp:
         return ft.Row(
             buttons,
             alignment=ft.MainAxisAlignment.CENTER,
-            wrap=True,
-            spacing=10,
-            run_spacing=10,
+            wrap=False,
+            spacing=button_spacing,
+            run_spacing=button_spacing,
+            scroll=ft.ScrollMode.AUTO,
+        )
+
+    def _step4_order_hint(self) -> ft.Control:
+        button_width, button_spacing = self._step4_button_metrics()
+        slots: List[ft.Control] = []
+        for i in range(1, 11):
+            if i == 1:
+                slots.append(
+                    ft.Column(
+                        [
+                            ft.Icon(ft.Icons.ARROW_UPWARD, size=18, color=ft.Colors.GREY_700),
+                            ft.Text("Première salle vue", size=12, color=ft.Colors.GREY_700, text_align=ft.TextAlign.CENTER),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        width=button_width,
+                    )
+                )
+            elif i == 10:
+                slots.append(
+                    ft.Column(
+                        [
+                            ft.Icon(ft.Icons.ARROW_UPWARD, size=18, color=ft.Colors.GREY_700),
+                            ft.Text("Dernière salle vue", size=12, color=ft.Colors.GREY_700, text_align=ft.TextAlign.CENTER),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        width=button_width,
+                    )
+                )
+            else:
+                slots.append(ft.Container(width=button_width))
+        return ft.Row(
+            slots,
+            alignment=ft.MainAxisAlignment.CENTER,
+            spacing=button_spacing,
+            run_spacing=button_spacing,
+            wrap=False,
+            scroll=ft.ScrollMode.AUTO,
         )
 
     def _button_row_image_choices(self, choices: List[Dict[str, Any]]) -> ft.Control:
@@ -1155,14 +1253,9 @@ class ExperimentApp:
             img = choice.get("image")
             card = ft.Container(
                 content=ft.Column([
-                    self._image_or_default(img, image_type="object", height=300),
-                    ft.Container(
-                        content=ft.Text(f"Image {idx + 1}", size=14, weight=ft.FontWeight.W_500),
-                        padding=8,
-                        alignment=ft.Alignment(0, 0),
-                    ),
+                    self._image_or_default(img, image_type="object", height=self._scale_size(500, min_value=240)),
                 ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                width=220,
+                width=self._scale_size(320, min_value=180),
                 bgcolor=ft.Colors.WHITE,
                 border=ft.border.all(2, ft.Colors.GREY_400),
                 border_radius=12,
@@ -1174,7 +1267,7 @@ class ExperimentApp:
         return ft.Row(
             cards,
             alignment=ft.MainAxisAlignment.CENTER,
-            spacing=30,
+            spacing=self._scale_size(24, min_value=12),
         )
 
     def _button_je_ne_sais_pas(self) -> ft.Control:
@@ -1203,22 +1296,22 @@ class ExperimentApp:
                 content=ft.Column([
                     ft.Image(
                         src=rimage,
-                        height=140,
+                        height=self._scale_size(180, min_value=120),
                         fit="cover",
-                        border_radius=ft.border_radius.only(top_left=12, top_right=12),
+                        border_radius=ft.BorderRadius.only(top_left=12, top_right=12),
                         error_content=ft.Container(
                             content=ft.Icon(ft.Icons.MEETING_ROOM, size=50, color=ft.Colors.GREY_600),
-                            height=140,
+                            height=self._scale_size(180, min_value=120),
                             alignment=ft.Alignment(0, 0),
                             bgcolor=ft.Colors.GREY_200,
                         ),
                     ),
                     ft.Container(
-                        content=ft.Text(rname, size=16, weight=ft.FontWeight.W_500, text_align=ft.TextAlign.CENTER),
-                        padding=10,
+                        content=ft.Text(rname, size=18, weight=ft.FontWeight.W_500, text_align=ft.TextAlign.CENTER),
+                        padding=12,
                     ),
                 ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                width=180,
+                width=self._scale_size(220, min_value=160),
                 bgcolor=ft.Colors.WHITE,
                 border=ft.border.all(2, ft.Colors.GREY_400),
                 border_radius=12,
@@ -1260,20 +1353,20 @@ class ExperimentApp:
                     # Image de salle plus grande, sans texte ni numéro sous l'image
                     ft.Image(
                         src=rimage,
-                        height=170,
-                        width=230,
+                        height=self._scale_size(200, min_value=120),
+                        width=self._scale_size(260, min_value=160),
                         fit="cover",
-                        border_radius=ft.border_radius.only(top_left=8, top_right=8),
+                        border_radius=ft.BorderRadius.only(top_left=8, top_right=8),
                         error_content=ft.Container(
                             content=ft.Icon(ft.Icons.MEETING_ROOM, size=40, color=ft.Colors.GREY_600),
-                            height=120,
-                            width=160,
+                            height=self._scale_size(140, min_value=100),
+                            width=self._scale_size(200, min_value=140),
                             alignment=ft.Alignment(0, 0),
                             bgcolor=ft.Colors.GREY_200,
                         ),
                     ),
                 ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                width=240,
+                width=self._scale_size(270, min_value=170),
                 bgcolor=ft.Colors.WHITE,
                 border=ft.border.all(1, ft.Colors.GREY_400),
                 border_radius=8,
@@ -2048,7 +2141,7 @@ class ExperimentApp:
             # Stage header
             items.append(ft.Container(
                 content=ft.Text(stage_names.get(stage_key, stage_key), size=14, weight=ft.FontWeight.BOLD),
-                padding=ft.padding.only(top=10, bottom=5, left=5),
+            padding=ft.Padding.only(top=10, bottom=5, left=5),
             ))
             
             # Task items
@@ -2078,7 +2171,7 @@ class ExperimentApp:
                         ft.Icon(icon, size=16, color=text_color),
                         ft.Text(label, size=12, color=text_color, expand=True),
                     ], spacing=8),
-                    padding=ft.padding.symmetric(horizontal=10, vertical=6),
+                    padding=ft.Padding.symmetric(horizontal=10, vertical=6),
                     bgcolor=bgcolor,
                     border_radius=4,
                     on_click=lambda _, i=idx: self._jump_to_question(i),
