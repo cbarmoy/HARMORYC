@@ -662,7 +662,7 @@ class ExperimentApp:
                 "duration_ms": STEP4_DURATION_MS,
             })
 
-        # Étape V (rappel tardif inversé)
+        # Étape V (rappel tardif)
         step5_trials = self._pick_balanced_trials(step5_trials, rand)
         rand.shuffle(step5_trials)
         for t in step5_trials:
@@ -671,7 +671,7 @@ class ExperimentApp:
                 "kind": "step5",
                 "stage": "V",
                 "image": t.get("image"),
-                "is_correct": not bool(t.get("is_correct")),
+                "is_correct": bool(t.get("is_correct")),
                 "duration_ms": STEP4_DURATION_MS,
             })
 
@@ -1045,7 +1045,14 @@ class ExperimentApp:
         lookup = {r.get("id"): r for r in rooms}
         return [lookup[rid] for rid in room_ids if rid in lookup]
 
-    def _image_or_default(self, src: Optional[str], image_type: str = "object", height: int = 300, expand: bool = False) -> ft.Control:
+    def _image_or_default(
+        self,
+        src: Optional[str],
+        image_type: str = "object",
+        height: int = 300,
+        width: Optional[int] = None,
+        expand: bool = False,
+    ) -> ft.Control:
         """Display image or use default based on type (object/room)."""
         if not src or not Path(src).exists():
             if image_type == "room":
@@ -1055,6 +1062,7 @@ class ExperimentApp:
         return ft.Image(
             src=str(src),
             height=None if expand else height,
+            width=None if expand else width,
             expand=expand,
             fit="contain",
             error_content=ft.Text("Image introuvable", size=20),
@@ -1253,9 +1261,14 @@ class ExperimentApp:
             img = choice.get("image")
             card = ft.Container(
                 content=ft.Column([
-                    self._image_or_default(img, image_type="object", height=self._scale_size(500, min_value=240)),
+                    self._image_or_default(
+                        img,
+                        image_type="object",
+                        height=self._scale_size(520, min_value=360),
+                        width=self._scale_size(640, min_value=420),
+                    ),
                 ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                width=self._scale_size(320, min_value=180),
+                width=self._scale_size(660, min_value=440),
                 bgcolor=ft.Colors.WHITE,
                 border=ft.border.all(2, ft.Colors.GREY_400),
                 border_radius=12,
@@ -1469,13 +1482,13 @@ class ExperimentApp:
             alt_bad_img = pos.get("alt_bad")
             if bool(obj.get("is_familiar")):
                 choices = [
-                    {"id": "good", "image": good_img, "is_correct": True},
-                    {"id": "bad", "image": bad_img, "is_correct": False},
+                    {"id": "choice1", "image": good_img, "is_correct": None},
+                    {"id": "choice2", "image": bad_img, "is_correct": None},
                 ]
             else:
                 choices = [
-                    {"id": "bad1", "image": bad_img, "is_correct": False},
-                    {"id": "bad2", "image": alt_bad_img, "is_correct": False},
+                    {"id": "choice1", "image": bad_img, "is_correct": None},
+                    {"id": "choice2", "image": alt_bad_img, "is_correct": None},
                 ]
             random.shuffle(choices)
             insert_at = self.current_task_index + 1
@@ -1523,7 +1536,7 @@ class ExperimentApp:
         if kind == "step2_spatial":
             obj = task.get("object", {})
             if not bool(obj.get("is_familiar")):
-                return None
+                return False
         if response is None or response in ("je_ne_sais_pas", "ne_repond_pas"):
             return False
         if kind == "step1":
@@ -1541,10 +1554,14 @@ class ExperimentApp:
         elif kind == "step2_spatial":
             obj = task.get("object", {})
             if not bool(obj.get("is_familiar")):
-                return None
+                return False
             for choice in task.get("choices") or []:
                 if choice.get("id") == response:
-                    return bool(choice.get("is_correct"))
+                    img = str(choice.get("image") or "").lower()
+                    if "position_of_ok" in img:
+                        return True
+                    if "position_of_wrong" in img:
+                        return False
             return False
         elif kind == "step3_daynight":
             return response == task.get("room", {}).get("timing")
@@ -1599,18 +1616,19 @@ class ExperimentApp:
             obj = task.get("object", {})
             record["response_choice_id"] = response
             if not bool(obj.get("is_familiar")):
-                record["response_category"] = "no_correct_answer"
-                return
-            expected_choice = None
-            for choice in task.get("choices") or []:
-                if choice.get("is_correct"):
-                    expected_choice = choice.get("id")
-                    break
-            record["expected_choice_id"] = expected_choice
-            if response == expected_choice:
-                record["response_category"] = "correct_position"
-            else:
                 record["response_category"] = "wrong_position"
+                return
+            for choice in task.get("choices") or []:
+                if choice.get("id") == response:
+                    img = str(choice.get("image") or "").lower()
+                    record["selected_image"] = choice.get("image")
+                    if "position_of_ok" in img:
+                        record["response_category"] = "correct_position"
+                        return
+                    if "position_of_wrong" in img:
+                        record["response_category"] = "wrong_position"
+                        return
+            record["response_category"] = "wrong_position"
             return
 
         if kind == "step3_daynight":
