@@ -892,7 +892,7 @@ class ExperimentApp:
         return images[0] if images else None
 
     def _extract_index(self, text: str) -> Optional[int]:
-        match = re.search(r"(\\d+)", text)
+        match = re.search(r"(\d+)", text)
         if not match:
             return None
         return int(match.group(1))
@@ -931,11 +931,15 @@ class ExperimentApp:
         rooms = []
         room_dirs = [d for d in rooms_dir.iterdir()] if rooms_dir.exists() else []
         room_dirs = [d for d in room_dirs if d.is_dir()]
-        room_dirs.sort(key=lambda d: self._extract_index(d.name) or 0)
+        # Tri numérique par index extrait du nom (Room1, Room2, ..., Room10)
+        room_dirs.sort(key=lambda d: self._extract_index(d.name) or 999)
         if not room_dirs:
             room_dirs = [Path(f"Room{i}") for i in range(1, 11)]
         for idx, d in enumerate(room_dirs, start=1):
-            room_index = self._extract_index(d.name) or idx
+            room_index = self._extract_index(d.name)
+            if room_index is None:
+                # Si on ne peut pas extraire l'index, utiliser l'index dans la liste triée
+                room_index = idx
             room_id = f"room{room_index}"
             room_name = f"Salle {room_index}"
             room_image = self._first_image(d if d.exists() else rooms_dir / f"Room{room_index}")
